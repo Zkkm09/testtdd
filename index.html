@@ -124,9 +124,9 @@ async function preloadAll(){
 
 // Questions
 const questions = [
- {prompt:'Where is the tree?', leftImg:'Tree1.jpg', rightImg:'Icecream1.jpg', correct:0, sound:()=>preloaded.sounds['s1']},
- {prompt:'Where is icecream?', leftImg:'Tree2.jpg', rightImg:'Icecream2.jpg', correct:1, sound:()=>preloaded.sounds['s2']},
- {prompt:'Where is the moon?', leftImg:'Tree1.jpg', rightImg:'Icecream1.jpg', correct:null, sound:()=>preloaded.sounds['s3'], specialToggle:true}
+ {prompt:'Where is the tree?', leftImg:'tree1.jpg', rightImg:'icecream1.jpg', correct:0, sound:()=>preloaded.sounds['s1']},
+ {prompt:'Where is icecream?', leftImg:'tree2.jpg', rightImg:'icecream2.jpg', correct:1, sound:()=>preloaded.sounds['s2']},
+ {prompt:'Where is the moon?', leftImg:'moon2.jpg', rightImg:'moon1.jpg', correct:null, sound:()=>preloaded.sounds['s3'], specialToggle:true}
 ];
 
 // Setup sounds
@@ -245,4 +245,5 @@ preloadAll().then(()=>{
 
 </body>
 </html>
+
 
