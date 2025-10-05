@@ -28,7 +28,7 @@ h1.title{font-size:48px;margin:0;text-align:center}
 .loader-dots{display:flex;gap:8px}
 .dot{width:12px;height:12px;border-radius:50%;background:var(--muted);opacity:0.6;animation:blink 1s infinite}
 @keyframes blink{0%{opacity:.2}50%{opacity:1}100%{opacity:.2}}
-.question{font-size:22px;color:var(--muted);text-align:center}
+.question{font-size:48px;color:var(--text);text-align:center}
 .fullscreen-video{position:fixed;left:0;right:0;top:0;bottom:0;background:black;display:flex;align-items:center;justify-content:center;z-index:9998}
 .fullscreen-video video{width:100%;height:100%;object-fit:cover}
 .footer-placeholder{height:40px}
@@ -62,7 +62,6 @@ h1.title{font-size:32px}
 
 <div class="app" id="app" style="display:none">
 <div class="center">
-<h1 class="title" id="mainTitle">Where is it?</h1>
 <div class="stage" id="stage">
 <div class="question" id="questionText"></div>
 <div class="images" id="imagesRow">
@@ -84,6 +83,7 @@ h1.title{font-size:32px}
 </div>
 
 <audio id="s1" src="sound1.mp3" preload="auto"></audio> <audio id="s2" src="sound2.mp3" preload="auto"></audio> <audio id="s3" src="sound3.mp3" preload="auto"></audio> <audio id="s4" src="sound4.mp3" preload="auto" loop></audio>
+<audio id="emptySound" src="empty.mp3" preload="auto"></audio>
 
 <script>
 const assets = {
@@ -141,25 +141,42 @@ function unlockAudioGesture(){
   if(audioUnlocked) return;
   audioUnlocked = true;
   speakerBtn.classList.add("active");
+
   try{
-    [s1,s2,s3,s4].forEach(a=>{
-      a.muted = false;
-      a.volume = 0.0001; // almost inaudible
-      a.currentTime = 0;
-      const p = a.play();
-      if(p && p.then) p.then(()=>{a.pause(); a.currentTime=0; a.volume=1}).catch(()=>{a.pause(); a.currentTime=0; a.volume=1})
-      else { a.pause(); a.currentTime=0; a.volume=1 }
-    })
-  }catch(e){}
+    // Play only empty.mp3 silently to unlock audio
+    emptySound.currentTime = 0;
+    emptySound.play().then(()=> {
+      // Audio is unlocked, do NOT play s1-s4 here
+      console.log("Audio unlocked silently.");
+    }).catch(()=>{});
+  }catch(e){console.warn(e)}
+
+  // Enable ready button
   readyBtn.classList.remove("disabled");
   readyBtn.disabled = false;
 }
 
 
+function stopAllSounds() {
+  [s1, s2, s3].forEach(a => {
+    try {
+      a.pause();
+      a.currentTime = 0;
+    } catch(e){}
+  });
+}
+
+const emptySound = document.getElementById("emptySound");
+
 speakerBtn.addEventListener("click", () => {
   unlockAudioGesture(); // unlocks audio for future use
-  // do NOT play any sound here
+  // Play empty.mp3
+  try { 
+    emptySound.currentTime = 0; 
+    emptySound.play().catch(()=>{}); 
+  } catch(e){}
 });
+
 
 
 
@@ -174,7 +191,7 @@ showQuestion(0)
 
 const steps = [
 {q:"Where is the tree",left:"tree1.jpg",right:"tree2.jpg",correct:"left",sound:s1},
-{q:"Where is icecream",left:"icecream1.jpg",right:"icecream2.jpg",correct:"right",sound:s2},
+{q:"Where is icecream",left:"icecream2.jpg",right:"icecream1.jpg",correct:"right",sound:s2},
 {q:"Where is the moon",left:"moon1.jpg",right:"moon2.jpg",correct:null,sound:s3}
 ]
 let currentStep=0
@@ -182,16 +199,20 @@ let answered=false
 
 function resetBorders(){leftCard.classList.remove("border-correct","border-wrong");rightCard.classList.remove("border-correct","border-wrong");leftCard.style.opacity=1;rightCard.style.opacity=1}
 function showQuestion(idx){
-resetBorders()
-answered=false
-const step = steps[idx]
-questionText.textContent = step.q
-leftImg.src = step.left
-rightImg.src = step.right
-try{step.sound.currentTime=0; step.sound.play().catch(()=>{})}catch(e){}
-leftCard.onclick = ()=>handleClick("left")
-rightCard.onclick = ()=>handleClick("right")
+  resetBorders()
+  answered=false
+  const step = steps[idx]
+  questionText.textContent = step.q
+  leftImg.src = step.left
+  rightImg.src = step.right
+
+  stopAllSounds(); // <- stop previous question sound
+  try { step.sound.play().catch(()=>{}) } catch(e){}
+
+  leftCard.onclick = ()=>handleClick("left")
+  rightCard.onclick = ()=>handleClick("right")
 }
+
 function handleClick(choice){
 if(answered) return
 answered=true
@@ -205,39 +226,70 @@ setTimeout(()=>{currentStep++; if(currentStep<steps.length) showQuestion(current
 if(choice==="left"){leftCard.classList.add("border-wrong");rightCard.classList.add("border-correct")}
 else{rightCard.classList.add("border-wrong");leftCard.classList.add("border-correct")}
 setTimeout(()=>{currentStep++; if(currentStep<steps.length) showQuestion(currentStep); else proceedToYou()},800)
-}
-}else{
-leftCard.classList.add("border-wrong")
-rightCard.classList.add("border-wrong")
+}}else{
+  leftCard.classList.add("border-wrong")
+  rightCard.classList.add("border-wrong")
 
-// Immediately start sound4 before flickering
-try {
-  s3.pause(); 
-  s3.currentTime = 0;
-  s4.currentTime = 0;
-  s4.muted = false;
-  s4.play().catch(()=>{});
-} catch(e) {}
+  // Start sound4 immediately before flickering
+  try {
+    s3.pause(); 
+    s3.currentTime = 0;
 
-startMoonFlicker(choice)
+    s4.currentTime = 0;
+    s4.muted = false;
+    s4.play().catch(()=>{}); // <- starts playing immediately
+  } catch(e){}
+
+  startMoonFlicker(choice)
 }
+
 
 }
 function startMoonFlicker(choice){
-try{s4.pause();s4.currentTime=0;s4.playbackRate=1;s3.pause();s3.currentTime=0;s4.muted=false;s4.play().catch(()=>{});}catch(e){}
-s4.pause();s4.currentTime=0;s4.muted=true
-let cycles = 5
-let durations = [500,400,300,200,100]
-let i=0
-function cycle(){
-if(i>=cycles){try{s4.muted=false;s4.play().catch(()=>{});}catch(e){};setTimeout(()=>{proceedToYou()},300);return}
-if(i%2===0){leftCard.style.opacity=1;rightCard.style.opacity=0}else{leftCard.style.opacity=0;rightCard.style.opacity=1}
-setTimeout(()=>{leftCard.style.opacity=1;rightCard.style.opacity=1;i++;cycle()},durations[i])
+  // Stop s3, reset s4
+  try {
+    s3.pause();
+    s3.currentTime = 0;
+    s4.pause();
+    s4.currentTime = 0;
+    s4.playbackRate = 1;
+    s4.muted = false;
+    s4.play().catch(()=>{});
+  } catch(e){}
+
+  // Flicker parameters
+  let cycles = 8;
+  let durations = [500, 400, 300, 250, 200, 150, 100];
+  let i = 0;
+
+  function cycle(){
+    if(i >= cycles){
+      // After flicker, ensure s4 keeps playing
+      try { s4.muted = false; s4.play().catch(()=>{}); } catch(e){}
+      setTimeout(()=>{proceedToYou()}, 300);
+      return;
+    }
+
+    if(i % 2 === 0){
+      leftCard.style.opacity = 1;
+      rightCard.style.opacity = 0;
+    } else {
+      leftCard.style.opacity = 0;
+      rightCard.style.opacity = 1;
+    }
+
+    setTimeout(()=>{
+      leftCard.style.opacity = 1;
+      rightCard.style.opacity = 1;
+      i++;
+      cycle();
+    }, durations[i]);
+  }
+
+  // Start flicker after a short delay to let s4 play
+  setTimeout(()=>{ cycle(); }, 120);
 }
-s4.muted=false
-try{s4.play().catch(()=>{})}catch(e){}
-setTimeout(()=>{s4.muted=true;cycle()},120)
-}
+
 function proceedToYou(){
 leftCard.onclick=null
 rightCard.onclick=null
@@ -262,7 +314,7 @@ function showVideoSequence() {
       loader.style.display = "none";
 
       videoContainer.classList.remove("hidden");
-      mainVideo.src = "video.mp4";
+      mainVideo.src = "Video.mp4";
       mainVideo.setAttribute("playsinline", "");
       mainVideo.setAttribute("webkit-playsinline", "");
       mainVideo.muted = true;
@@ -283,4 +335,3 @@ function showVideoSequence() {
 
 </body>
 </html>
-
